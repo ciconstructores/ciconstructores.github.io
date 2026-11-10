@@ -452,7 +452,7 @@ function cargarHoy() {
 function pasos() {
   var t = tipoActual(), ub = [], gps = [], otros = [];
   t.campos.forEach(function (c) { (GRUPO_UBIC.indexOf(c[0]) >= 0 ? ub : GRUPO_GPS.indexOf(c[0]) >= 0 ? gps : otros).push(c); });
-  return [{ n: 'Ubicación', c: ub }, { n: 'Hallazgo', c: otros }, { n: 'GPS y foto', c: gps }, { n: 'Enviar', c: [] }];
+  return [{ n: 'Ubicación', c: ub }, { n: 'Hallazgo', c: otros }, { n: 'GPS', c: gps }, { n: 'Enviar', c: [] }];
 }
 function abrir(k) {
   E = { tipo: k, paso: 0, v: {}, foto: null, fecha: hoyISO() };
@@ -493,7 +493,6 @@ function pintar() {
     if (gps) {
       var ll = cs.filter(function (c) { return c[0] === 'lat' || c[0] === 'lon'; }), resto = cs.filter(function (c) { return c[0] !== 'lat' && c[0] !== 'lon'; });
       h += '<div class="tarjeta"><h2>Coordenadas</h2><p class="sub">Copia las del equipo GPS o usa las del celular.</p><div id="ubic-box"></div>' + ll.map(campoHtml).join('') + resto.map(campoHtml).join('') + '</div>';
-      h += '<div class="tarjeta"><h2>Foto del hallazgo</h2><p class="sub">Opcional. Usa <b>Cámara</b> para tomarla ahora o <b>Galería</b> para elegir una.</p>' + fotoHtml() + '</div>';
     } else {
       h += '<div class="tarjeta"><h2>' + p.n + '</h2>' + (E.paso === 0 ? '<p class="sub">Los datos de zona se recuerdan del reporte anterior.</p>' : '') + cs.map(campoHtml).join('') + '</div>';
     }
@@ -526,7 +525,6 @@ function usarGps() { if (!POS) return; leerCampos(); E.v.lat = POS.latitude.toFi
 function resumenHtml() {
   var t = tipoActual(), filas = [['Tipo', t.opcion], ['Técnico', ls('tecnico')], ['Fecha', E.fecha.split('-').reverse().join('/')]];
   t.campos.forEach(function (c) { if (E.v[c[0]]) filas.push([c[1].replace(' (SI / NO)', ''), E.v[c[0]]]); });
-  filas.push(['Foto', E.foto ? 'Sí' : 'No']);
   return filas.map(function (f) { return '<div><span>' + esc(f[0]) + '</span><b>' + esc(f[1]) + '</b></div>'; }).join('');
 }
 function elegir(k, v, el) {
