@@ -421,10 +421,9 @@ function modoInicio(titulo, sub) { $('pasos').hidden = true; $('nav').hidden = t
 
 function pedirTecnico() {
   modoInicio('Reporte de <span>campo</span>', 'Escribe tu nombre una sola vez; queda guardado en este celular.');
-  var dl = (CFG.sugerencias.tecnico || []).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
   $('app').innerHTML = '<div class="tarjeta" style="margin-top:-30px"><h2>Responsable</h2>' +
-    '<div class="campo"><label for="nt">Nombre del técnico</label><input id="nt" class="mayus" list="dlt" value="' + esc(ls('tecnico') || '') + '" placeholder="Nombre y apellido" autocomplete="name"><datalist id="dlt">' + dl + '</datalist><p class="error" id="e-nt"></p></div>' +
-    '<div class="campo"><label for="ng">Serie del GPS <span class="opc">(opcional)</span></label><input id="ng" class="mayus" value="' + esc(ls('gps_serie') || '') + '" placeholder="Ej: 3KS012345"></div>' +
+    '<div class="campo"><label for="nt">Nombre del técnico</label><input id="nt" class="mayus" value="' + esc(ls('tecnico') || '') + '" placeholder="Nombre y apellido" autocomplete="off"><p class="error" id="e-nt"></p></div>' +
+    '<div class="campo"><label for="ng">Serie del GPS <span class="opc">(opcional)</span></label><input id="ng" class="mayus" value="' + esc(ls('gps_serie') || '') + '" autocomplete="off"></div>' +
     '<button type="button" class="btn prim total" onclick="guardarTecnico()">Entrar</button></div>';
 }
 function guardarTecnico() {
@@ -480,9 +479,7 @@ function campoHtml(c) {
   }
   var req = k === 'direccion' ? ' <span class="opc">*</span>' : '';
   if (c[2] === 'parrafo') return '<div class="campo"><label for="f_' + k + '">' + esc(et) + '</label><textarea id="f_' + k + '" data-k="' + k + '" placeholder="Escribe aquí…">' + esc(v) + '</textarea><p class="error"></p></div>';
-  var sug = CFG.sugerencias[k] || [], dl = sug.length ? '<datalist id="dl_' + k + '">' + sug.map(function (s) { return '<option value="' + esc(s) + '">'; }).join('') + '</datalist>' : '';
-  var ph = { lat: '7.06352', lon: '-73.08619', wp: 'Ej: 125', direccion: 'Ej: Cra 27 # 45-12', pv: 'Ej: 1,5' }[k] || '';
-  return '<div class="campo"><label for="f_' + k + '">' + esc(et) + req + '</label><input id="f_' + k + '" data-k="' + k + '" type="' + (k === 'locfecha' ? 'date' : 'text') + '"' + (NUM.indexOf(k) >= 0 ? ' inputmode="decimal"' : '') + (sug.length ? ' list="dl_' + k + '"' : '') + ' value="' + esc(v) + '" placeholder="' + esc(ph) + '" autocomplete="off"><p class="error"></p>' + dl + '</div>';
+  return '<div class="campo"><label for="f_' + k + '">' + esc(et) + req + '</label><input id="f_' + k + '" data-k="' + k + '" type="' + (k === 'locfecha' ? 'date' : 'text') + '"' + (NUM.indexOf(k) >= 0 ? ' inputmode="decimal"' : '') + ' value="' + esc(v) + '" autocomplete="off"><p class="error"></p></div>';
 }
 function pintar() {
   var ps = pasos(), p = ps[E.paso], h = '';
