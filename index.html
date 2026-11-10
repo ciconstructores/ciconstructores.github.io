@@ -339,7 +339,7 @@ main { max-width: 640px; margin: 0 auto; padding: 18px 14px 140px; }
       <button type="button" class="gps gps-busca" id="gps" onclick="pedirGps(true)"><i></i><span>Buscando GPS…</span></button>
     </div>
     <h1 id="titulo">Reporte de <span>campo</span></h1>
-    <p id="subtitulo">Hallazgos de reseguimiento en Floridablanca</p>
+    <p id="subtitulo">Hallazgos de reseguimiento de redes</p>
     <button type="button" class="tec-chip" id="tec-chip" onclick="pedirTecnico()" hidden><span id="tec-ini"></span><em id="tec-nom" style="font-style:normal"></em></button>
   </div>
 </header>
@@ -382,8 +382,8 @@ var ICONOS = {
 var DESC = { ANOM: 'Daños o riesgos en la red', POLI: 'Inspección de polivalvulas', FCM: 'Fuga en centro de medición', FRED: 'Fuga en red de distribución' };
 var GRUPO_UBIC = ['depto', 'municipio', 'sector', 'zona', 'malla', 'mz', 'manz', 'ciclo', 'dm', 'idvalvula', 'direccion'];
 var GRUPO_GPS = ['lat', 'lon', 'gps', 'wp'];
-var RECORDAR = ['depto', 'municipio', 'sector', 'zona', 'malla', 'ciclo', 'dm', 'gps', 'equipo', 'terreno'];
-var POR_DEFECTO = { depto: 'SANTANDER', municipio: 'FLORIDABLANCA' };
+var RECORDAR = [];
+var POR_DEFECTO = {};
 var NUM = ['lat', 'lon', 'wp', 'pv', 'lectura', 'loclectura', 'diametro'];
 var POS = null;
 
@@ -456,7 +456,7 @@ function pasos() {
 }
 function abrir(k) {
   E = { tipo: k, paso: 0, v: {}, foto: null, fecha: hoyISO() };
-  var mem = ls('mem_' + k) || {};
+  var mem = {};
   Object.keys(POR_DEFECTO).forEach(function (p) { if (mem[p] == null) mem[p] = POR_DEFECTO[p]; });
   if (mem.gps == null && ls('gps_serie')) mem.gps = ls('gps_serie');
   tipoActual().campos.forEach(function (c) { if (mem[c[0]] != null) E.v[c[0]] = mem[c[0]]; });
@@ -494,7 +494,7 @@ function pintar() {
       var ll = cs.filter(function (c) { return c[0] === 'lat' || c[0] === 'lon'; }), resto = cs.filter(function (c) { return c[0] !== 'lat' && c[0] !== 'lon'; });
       h += '<div class="tarjeta"><h2>Coordenadas</h2><p class="sub">Copia las del equipo GPS o usa las del celular.</p><div id="ubic-box"></div>' + ll.map(campoHtml).join('') + resto.map(campoHtml).join('') + '</div>';
     } else {
-      h += '<div class="tarjeta"><h2>' + p.n + '</h2>' + (E.paso === 0 ? '<p class="sub">Los datos de zona se recuerdan del reporte anterior.</p>' : '') + cs.map(campoHtml).join('') + '</div>';
+      h += '<div class="tarjeta"><h2>' + p.n + '</h2>' + '' + cs.map(campoHtml).join('') + '</div>';
     }
   } else {
     h += '<div class="tarjeta"><h2>Revisa y envía</h2><div class="resumen">' + resumenHtml() + '</div></div>';
@@ -546,7 +546,7 @@ function validar() {
   var malos = [];
   if (E.paso === 0 && !E.v.direccion) { marcarError('direccion', 'Escribe la dirección'); malos.push('direccion'); }
   if (E.paso === 2) {
-    if (!coordOk(E.v.lat, -5, 14)) { marcarError('lat', 'En Floridablanca la latitud es cerca de 7.06'); malos.push('lat'); }
+    if (!coordOk(E.v.lat, -5, 14)) { marcarError('lat', 'Revisa la latitud (en Colombia va entre -5 y 14)'); malos.push('lat'); }
     if (!coordOk(E.v.lon, -82, -66)) { marcarError('lon', 'La longitud es negativa, cerca de -73.08'); malos.push('lon'); }
   }
   if (malos.length) { $('f_' + malos[0]).focus(); toast('Revisa los campos marcados'); return false; }
