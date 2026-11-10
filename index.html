@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CIC · Reporte de campo</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#09442f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CIC Reportes">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -340,6 +348,7 @@ main { max-width: 640px; margin: 0 auto; padding: 18px 14px 140px; }
     </div>
     <h1 id="titulo">Reporte de <span>campo</span></h1>
     <p id="subtitulo">Hallazgos de reseguimiento de redes</p>
+    <button type="button" class="tec-chip" id="instalar" onclick="instalarApp()" style="margin-right:8px" hidden><span>+</span>Instalar app</button>
     <button type="button" class="tec-chip" id="tec-chip" onclick="pedirTecnico()" hidden><span id="tec-ini"></span><em id="tec-nom" style="font-style:normal"></em></button>
   </div>
 </header>
@@ -621,6 +630,11 @@ function enviarCola(manual) {
 }
 window.addEventListener('online', function () { enviarCola(); });
 setInterval(enviarCola, 30000);
+var PROMPT = null;
+window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); PROMPT = e; $('instalar').hidden = false; });
+window.addEventListener('appinstalled', function () { $('instalar').hidden = true; toast('App instalada en el inicio'); });
+function instalarApp() { if (!PROMPT) return; PROMPT.prompt(); PROMPT.userChoice.then(function () { PROMPT = null; $('instalar').hidden = true; }); }
+if ('serviceWorker' in navigator && /github\.io$/.test(location.hostname)) { navigator.serviceWorker.register('sw.js').catch(function () {}); }
 cargar();
 </script>
 </body>
