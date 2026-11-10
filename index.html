@@ -446,7 +446,8 @@ function inicio() {
   modoInicio('¿Qué <span>encontraste</span>?', 'Toca el tipo de hallazgo para empezar el reporte.');
   var h = '<div id="cola-box"></div><div class="tipos" style="margin-top:-30px">';
   CFG.tipos.forEach(function (t) { h += '<button type="button" class="tipo" onclick="abrir(\'' + t.k + '\')"><span class="ico">' + ICONOS[t.k] + '</span><b>' + esc(t.opcion) + '</b><small>' + DESC[t.k] + '</small></button>'; });
-  h += '</div><div class="tarjeta" style="margin-top:14px"><h2>Mis reportes de hoy <span class="cnt" id="cnt">…</span></h2><ul class="hoy" id="hoy"><li class="r">Cargando…</li></ul></div>';
+  h += '</div><div class="tarjeta" style="margin-top:14px"><h2>Mis reportes de hoy <span class="cnt" id="cnt">…</span></h2><ul class="hoy" id="hoy"><li class="r">Cargando…</li></ul></div>' +
+    '<button type="button" class="btn sec total" onclick="informes()">Informes para Metrogas (administrador)</button>';
   $('app').innerHTML = h; pintarCola(); cargarHoy();
 }
 function cargarHoy() {
@@ -454,6 +455,56 @@ function cargarHoy() {
     if (!$('hoy')) return; $('cnt').textContent = l.length;
     $('hoy').innerHTML = l.length ? l.map(function (r) { return '<li><span class="h">' + esc(r.hora) + '</span><span><span class="t">' + esc(r.tipo) + '</span><br><span class="r">' + esc(r.ref) + '</span></span></li>'; }).join('') : '<li class="r">Aún no has enviado reportes hoy.</li>';
   }).catch(function () { if ($('hoy')) { $('cnt').textContent = '–'; $('hoy').innerHTML = '<li class="r">Sin conexión.</li>'; } });
+}
+
+/* ---------- Informes (administrador, con PIN) ---------- */
+function informes() {
+  modoInicio('Informes <span>Metrogas</span>', 'Solo para el administrador. Escribe el PIN.');
+  var pin = ''; try { pin = localStorage.getItem('cic_pin') || ''; } catch (e) {}
+  $('app').innerHTML = '<div class="tarjeta" style="margin-top:-30px"><h2>Informe del mes</h2><p class="sub">El Excel con el formato del cliente, se llena solo con cada reporte.</p>' +
+    '<div class="campo"><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="off" value="' + esc(pin) + '"></div>' +
+    '<button type="button" class="btn prim total" onclick="abrirVivo()">Abrir informe del mes</button></div>' +
+    '<div class="tarjeta"><h2>Descargar por fechas</h2><p class="sub">Genera el Excel solo con los reportes de esas fechas.</p>' +
+    '<div class="chips" style="margin-top:14px"><button type="button" onclick="rangoInf(\'hoy\')">Hoy</button><button type="button" onclick="rangoInf(\'semana\')">Semana</button><button type="button" onclick="rangoInf(\'mes\')">Mes</button></div>' +
+    '<div class="fila2"><div class="campo"><label for="d1">Desde</label><input id="d1" type="date"></div><div class="campo"><label for="d2">Hasta</label><input id="d2" type="date"></div></div>' +
+    '<button type="button" class="btn prim total" id="go" onclick="generarInf()">Descargar Excel</button></div>' +
+    '<div id="inf-msg"></div><button type="button" class="btn sec total" onclick="inicio()">Volver</button>';
+  rangoInf('mes');
+}
+function isoF(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function rangoInf(t) {
+  var h = new Date(), a = new Date(h);
+  if (t === 'semana') a.setDate(h.getDate() - (h.getDay() + 6) % 7);
+  if (t === 'mes') a = new Date(h.getFullYear(), h.getMonth(), 1);
+  $('d1').value = isoF(a); $('d2').value = isoF(h);
+}
+function pinInf() { var p = $('pin').value.trim(); if (!p) { $('inf-msg').innerHTML = '<div class="tarjeta"><p class="error">Escribe el PIN.</p></div>'; $('pin').focus(); } return p; }
+function abrirVivo() {
+  var pin = pinInf(); if (!pin) return;
+  $('inf-msg').innerHTML = '<div class="tarjeta centro"><div class="carga"></div><p class="sub">Buscando informe…</p></div>';
+  run('appInformeVivo', pin).then(function (u) {
+    try { localStorage.setItem('cic_pin', pin); } catch (e) {}
+    $('inf-msg').innerHTML = '<div class="tarjeta centro"><a class="btn prim total" href="' + esc(u) + '" target="_blank" rel="noopener" style="display:block;text-decoration:none">Abrir informe en Google Drive</a></div>';
+    window.open(u, '_blank');
+  }).catch(function (e) { $('inf-msg').innerHTML = '<div class="tarjeta"><p class="error">' + esc(e.message || e) + '</p></div>'; });
+}
+function generarInf() {
+  var pin = pinInf(); if (!pin) return;
+  var d1 = $('d1').value, d2 = $('d2').value;
+  if (!d1 || !d2 || d2 < d1) { $('inf-msg').innerHTML = '<div class="tarjeta"><p class="error">Revisa las fechas.</p></div>'; return; }
+  $('go').disabled = true; $('go').textContent = 'Generando…';
+  $('inf-msg').innerHTML = '<div class="tarjeta centro"><div class="carga"></div><p class="sub">Armando el Excel, puede tardar unos segundos…</p></div>';
+  run('appInforme', pin, d1, d2).then(function (r) {
+    $('go').disabled = false; $('go').textContent = 'Descargar Excel';
+    try { localStorage.setItem('cic_pin', pin); } catch (e) {}
+    if (!r) { $('inf-msg').innerHTML = '<div class="tarjeta"><p class="sub">No hay reportes en esas fechas.</p></div>'; return; }
+    var b = atob(r.b64), arr = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) arr[i] = b.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    var nombre = r.nombre + (/\.xlsx$/i.test(r.nombre) ? '' : '.xlsx');
+    $('inf-msg').innerHTML = '<div class="tarjeta centro"><h2 style="justify-content:center">' + esc(r.nombre) + '</h2><p class="sub">' + r.total + ' reportes</p>' +
+      '<a class="btn prim total" href="' + url + '" download="' + esc(nombre) + '" style="display:block;text-decoration:none">Descargar Excel</a></div>';
+    var a = document.createElement('a'); a.href = url; a.download = nombre; document.body.appendChild(a); try { a.click(); } catch (e) {} a.remove();
+  }).catch(function (e) { $('go').disabled = false; $('go').textContent = 'Descargar Excel'; $('inf-msg').innerHTML = '<div class="tarjeta"><p class="error">' + esc(e.message || e) + '</p></div>'; });
 }
 
 /* ---------- Formulario por pasos ---------- */
