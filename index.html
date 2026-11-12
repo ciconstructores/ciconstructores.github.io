@@ -434,7 +434,7 @@ function pedirTecnico() {
   modoInicio('Reporte de <span>campo</span>', 'Escribe tu nombre una sola vez; queda guardado en este celular.');
   $('app').innerHTML = '<div class="tarjeta" style="margin-top:-30px"><h2>Responsable</h2>' +
     '<div class="campo"><label for="nt">Nombre del técnico</label><input id="nt" class="mayus" value="' + esc(ls('tecnico') || '') + '" placeholder="Nombre y apellido" autocomplete="off"><p class="error" id="e-nt"></p></div>' +
-    '<div class="campo"><label for="ng">Serie del GPS <span class="opc">(opcional)</span></label><input id="ng" class="mayus" value="' + esc(ls('gps_serie') || '') + '" autocomplete="off"></div>' +
+    '<div class="campo"><label for="ng">Serie del GPS</label><input id="ng" class="mayus" value="' + esc(ls('gps_serie') || '') + '" autocomplete="off"><p class="error" id="e-ng"></p></div>' +
     '<button type="button" class="btn prim total" onclick="guardarTecnico()">Entrar</button></div>';
 }
 function guardarTecnico() {
@@ -445,6 +445,7 @@ function guardarTecnico() {
     .catch(function () { $('e-nt').textContent = 'Escribe tu nombre'; $('nt').parentNode.classList.add('con-error'); });
     return;
   }
+  if (!$('ng').value.trim()) { $('e-ng').textContent = 'Escribe la serie del GPS'; $('ng').parentNode.classList.add('con-error'); $('ng').focus(); return; }
   ls('tecnico', t.toUpperCase()); ls('gps_serie', $('ng').value.trim().toUpperCase()); pintarTec(); inicio();
 }
 
@@ -542,16 +543,16 @@ function campoHtml(c) {
   if (k === 'pintada' || k === 'marcada' || c[2] === 'opciones') {
     var ops = c[2] === 'opciones' ? c[3] : ['SI', 'NO'];
     return '<div class="campo" data-k="' + k + '"><span class="etq">' + esc(et.replace(' (SI / NO)', '')) + '</span><div class="chips' + (ops.length === 3 ? ' tres' : '') + '" role="group" aria-label="' + esc(et) + '">' +
-      ops.map(function (o) { return '<button type="button" class="' + (v === o ? 'sel' : '') + '" aria-pressed="' + (v === o) + '" onclick="elegir(\'' + k + '\',\'' + o + '\',this)">' + esc(o) + '</button>'; }).join('') + '</div></div>';
+      ops.map(function (o) { return '<button type="button" class="' + (v === o ? 'sel' : '') + '" aria-pressed="' + (v === o) + '" onclick="elegir(\'' + k + '\',\'' + o + '\',this)">' + esc(o) + '</button>'; }).join('') + '</div><p class="error"></p></div>';
   }
-  var req = k === 'direccion' ? ' <span class="opc">*</span>' : '';
+  var req = '';
   if (c[2] === 'parrafo') return '<div class="campo"><label for="f_' + k + '">' + esc(et) + '</label><textarea id="f_' + k + '" data-k="' + k + '" placeholder="Escribe aquí…">' + esc(v) + '</textarea><p class="error"></p></div>';
   return '<div class="campo"><label for="f_' + k + '">' + esc(et) + req + '</label><input id="f_' + k + '" data-k="' + k + '" type="' + (k === 'locfecha' ? 'date' : 'text') + '"' + (NUM.indexOf(k) >= 0 ? ' inputmode="decimal"' : '') + ' value="' + esc(v) + '" autocomplete="off"><p class="error"></p></div>';
 }
 function pintar() {
   var ps = pasos(), p = ps[E.paso], h = '';
   pintarPasos();
-  if (E.paso === 0) h += '<div class="tarjeta"><h2>Fecha</h2><div class="campo"><label for="f_fecha">Fecha del hallazgo</label><input id="f_fecha" type="date" value="' + E.fecha + '"></div></div>';
+  if (E.paso === 0) h += '<div class="tarjeta"><h2>Fecha</h2><div class="campo"><label for="f_fecha">Fecha del hallazgo</label><input id="f_fecha" type="date" value="' + E.fecha + '"><p class="error"></p></div></div>';
   if (E.paso < 3) {
     var gps = E.paso === 2, cs = p.c;
     if (gps) {
@@ -601,24 +602,32 @@ function leerCampos() {
   if ($('f_fecha')) E.fecha = $('f_fecha').value || hoyISO();
 }
 function marcarError(k, msg) {
-  var el = $('f_' + k); if (!el) return;
-  var c = el.closest('.campo'); c.classList.add('con-error'); c.querySelector('.error').textContent = msg;
+  var el = $('f_' + k) || document.querySelector('#app .campo[data-k="' + k + '"]'); if (!el) return;
+  var c = el.closest('.campo'); c.classList.add('con-error'); var e = c.querySelector('.error'); if (e) e.textContent = msg;
 }
 function coordOk(v, a, b) { if (!v) return true; var n = parseFloat(String(v).replace(',', '.')); return !isNaN(n) && n >= a && n <= b; }
-function validar() {
+function validar(p) {
   [].forEach.call(document.querySelectorAll('.campo.con-error'), function (c) { c.classList.remove('con-error'); var e = c.querySelector('.error'); if (e) e.textContent = ''; });
   var malos = [];
-  if (E.paso === 0 && !E.v.direccion) { marcarError('direccion', 'Escribe la dirección'); malos.push('direccion'); }
-  if (E.paso === 2) {
-    if (!coordOk(E.v.lat, -5, 14)) { marcarError('lat', 'Revisa la latitud (en Colombia va entre -5 y 14)'); malos.push('lat'); }
-    if (!coordOk(E.v.lon, -82, -66)) { marcarError('lon', 'La longitud es negativa, cerca de -73.08'); malos.push('lon'); }
+  if (p == null) p = E.paso;
+  var cs = (pasos()[p] || { c: [] }).c, msg = {};
+  if (p === 0 && !E.fecha) { malos.push('fecha'); msg.fecha = 'Campo obligatorio'; }
+  cs.forEach(function (c) { var v = E.v[c[0]]; if (v == null || String(v).trim() === '') { malos.push(c[0]); msg[c[0]] = 'Campo obligatorio'; } });
+  if (p === 2) {
+    if (E.v.lat && !coordOk(E.v.lat, -5, 14)) { malos.push('lat'); msg.lat = 'Revisa la latitud (en Colombia va entre -5 y 14)'; }
+    if (E.v.lon && !coordOk(E.v.lon, -82, -66)) { malos.push('lon'); msg.lon = 'La longitud es negativa, cerca de -73.08'; }
   }
-  if (malos.length) { $('f_' + malos[0]).focus(); toast('Revisa los campos marcados'); return false; }
+  if (malos.length) {
+    if (malos[0] !== 'fecha' && !document.querySelector('#app [data-k="' + malos[0] + '"]')) { E.paso = p; pintar(); }
+    malos.forEach(function (k) { marcarError(k, msg[k]); });
+    var f = $('f_' + malos[0]); if (f) f.focus(); else { var c0 = document.querySelector('#app .campo[data-k="' + malos[0] + '"]'); if (c0) c0.scrollIntoView({ block: 'center' }); }
+    toast('Completa todos los campos'); return false;
+  }
   return true;
 }
 function ir(i) {
   leerCampos();
-  if (i > E.paso) { for (var p = E.paso; p < i; p++) { if (!validar()) return; E.paso = p + 1; } }
+  if (i > E.paso) { for (var p = E.paso; p < i; p++) { if (!validar(p)) return; E.paso = p + 1; } }
   else E.paso = i;
   pintar();
 }
