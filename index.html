@@ -395,6 +395,8 @@ var RECORDAR = [];
 var POR_DEFECTO = {};
 var NUM = ['lat', 'lon', 'wp', 'pv', 'lectura', 'loclectura', 'diametro'];
 var POS = null;
+var ES_ADMIN = /[?&]admin\b/.test(location.search);
+if (ES_ADMIN) ls('admin', true);
 
 function $(id) { return document.getElementById(id); }
 function ls(k, v) { try { if (v === undefined) { var x = localStorage.getItem('cic_' + k); return x ? JSON.parse(x) : null; } localStorage.setItem('cic_' + k, JSON.stringify(v)); return true; } catch (e) { return null; } }
@@ -422,7 +424,7 @@ function pedirGps(avisar) {
 /* ---------- Inicio ---------- */
 function cargar() {
   pedirGps(false);
-  run('appConfig').then(function (c) { CFG = c; pintarTec(); if (!ls('tecnico')) pedirTecnico(); else inicio(); enviarCola(); })
+  run('appConfig').then(function (c) { CFG = c; pintarTec(); if (ES_ADMIN) informes(); else if (!ls('tecnico')) pedirTecnico(); else inicio(); enviarCola(); })
   .catch(function (e) { $('app').innerHTML = '<div class="tarjeta" style="margin-top:-30px"><h2>Sin conexión</h2><p class="sub">No se pudo cargar. Revisa la señal y recarga la página.</p><p class="error">' + esc(e.message || e) + '</p></div>'; });
 }
 function pintarTec() { var t = ls('tecnico'); $('tec-chip').hidden = !t; $('tec-nom').textContent = t || ''; $('tec-ini').textContent = iniciales(t); }
@@ -438,6 +440,11 @@ function pedirTecnico() {
 function guardarTecnico() {
   var t = $('nt').value.trim();
   if (!t) { $('e-nt').textContent = 'Escribe tu nombre'; $('nt').parentNode.classList.add('con-error'); $('nt').focus(); return; }
+  if (/^\d{4,8}$/.test(t)) {
+    run('appInformeVivo', t).then(function () { ls('admin', true); try { localStorage.setItem('cic_pin', t); } catch (e) {} informes(); })
+    .catch(function () { $('e-nt').textContent = 'Escribe tu nombre'; $('nt').parentNode.classList.add('con-error'); });
+    return;
+  }
   ls('tecnico', t.toUpperCase()); ls('gps_serie', $('ng').value.trim().toUpperCase()); pintarTec(); inicio();
 }
 
@@ -447,7 +454,7 @@ function inicio() {
   var h = '<div id="cola-box"></div><div class="tipos" style="margin-top:-30px">';
   CFG.tipos.forEach(function (t) { h += '<button type="button" class="tipo" onclick="abrir(\'' + t.k + '\')"><span class="ico">' + ICONOS[t.k] + '</span><b>' + esc(t.opcion) + '</b><small>' + DESC[t.k] + '</small></button>'; });
   h += '</div><div class="tarjeta" style="margin-top:14px"><h2>Mis reportes de hoy <span class="cnt" id="cnt">…</span></h2><ul class="hoy" id="hoy"><li class="r">Cargando…</li></ul></div>' +
-    '<button type="button" class="btn sec total" onclick="informes()">Informes para Metrogas (administrador)</button>';
+    (ls('admin') ? '<button type="button" class="btn sec total" onclick="informes()">Informes para Metrogas (administrador)</button>' : '');
   $('app').innerHTML = h; pintarCola(); cargarHoy();
 }
 function cargarHoy() {
@@ -468,7 +475,7 @@ function informes() {
     '<div class="chips" style="margin-top:14px"><button type="button" onclick="rangoInf(\'hoy\')">Hoy</button><button type="button" onclick="rangoInf(\'semana\')">Semana</button><button type="button" onclick="rangoInf(\'mes\')">Mes</button></div>' +
     '<div class="fila2"><div class="campo"><label for="d1">Desde</label><input id="d1" type="date"></div><div class="campo"><label for="d2">Hasta</label><input id="d2" type="date"></div></div>' +
     '<button type="button" class="btn prim total" id="go" onclick="generarInf()">Descargar Excel</button></div>' +
-    '<div id="inf-msg"></div><button type="button" class="btn sec total" onclick="inicio()">Volver</button>';
+    '<div id="inf-msg"></div><button type="button" class="btn sec total" onclick="ls(\'tecnico\') ? inicio() : pedirTecnico()">Ir a reportar</button>';
   rangoInf('mes');
 }
 function isoF(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
