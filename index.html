@@ -345,7 +345,7 @@ main { max-width: 640px; margin: 0 auto; padding: 18px 14px 140px; }
 <header class="hero">
   <div class="ancho">
     <div class="marca">
-      <span class="sello">Reporte de campo · CIC</span>
+      <span class="sello" onclick="tocarSello()">Reporte de campo · CIC</span>
       <button type="button" class="gps gps-busca" id="gps" onclick="pedirGps(true)"><i></i><span>Buscando GPS…</span></button>
     </div>
     <h1 id="titulo">Reporte de <span>campo</span></h1>
@@ -394,7 +394,7 @@ var DESC = { ANOM: 'Daños o riesgos en la red', POLI: 'Inspección de polivalvu
 var GRUPO_UBIC = ['depto', 'municipio', 'sector', 'zona', 'malla', 'mz', 'manz', 'ciclo', 'dm', 'idvalvula', 'direccion'];
 var GRUPO_GPS = ['lat', 'lon', 'gps', 'wp'];
 var RECORDAR = [];
-var TECNICOS = ['DAVID BARON'];
+var TECNICOS = ['DAVID BARÓN ISAQUITA'];
 var POR_DEFECTO = {};
 var NUM = ['lat', 'lon', 'wp', 'pv', 'lectura', 'loclectura', 'diametro'];
 var POS = null;
@@ -434,22 +434,24 @@ function pintarTec() { var t = ls('tecnico'); $('tec-chip').hidden = !t; $('tec-
 function modoInicio(titulo, sub) { $('pasos').hidden = true; $('nav').hidden = true; $('titulo').innerHTML = titulo; $('subtitulo').textContent = sub; window.scrollTo(0, 0); }
 
 function pedirTecnico() {
-  modoInicio('Reporte de <span>campo</span>', 'Escribe tu nombre una sola vez; queda guardado en este celular.');
+  modoInicio('Reporte de <span>campo</span>', 'Elige tu nombre una sola vez; queda guardado en este celular.');
   $('app').innerHTML = '<div class="tarjeta" style="margin-top:-30px"><h2>Responsable</h2>' +
     '<div class="campo"><label for="nt">Nombre del técnico</label>' +
     '<div class="chips" style="margin-bottom:10px">' + TECNICOS.map(function (n, i) { return '<button type="button" class="' + (ls('tecnico') === n ? 'sel' : '') + '" onclick="elegirTec(' + i + ',this)">' + esc(n) + '</button>'; }).join('') + '</div>' +
-    '<input id="nt" class="mayus" value="' + esc(ls('tecnico') || '') + '" placeholder="Nombre y apellido" autocomplete="off"><p class="error" id="e-nt"></p></div>' +
+    '<input id="nt" type="hidden" value="' + esc(TECNICOS.indexOf(ls('tecnico')) >= 0 ? ls('tecnico') : '') + '"><p class="error" id="e-nt"></p></div>' +
     '<div class="campo"><label for="ng">Celular: marca y número de serie</label><input id="ng" class="mayus" value="' + esc(ls('gps_serie') || '') + '" autocomplete="off"><p class="error" id="e-ng"></p></div>' +
     '<div class="campo"><label for="ne">Serie del equipo detector</label><input id="ne" class="mayus" value="' + esc(ls('equipo_serie') || '') + '" autocomplete="off"><p class="error" id="e-ne"></p></div>' +
     '<button type="button" class="btn prim total" onclick="guardarTecnico()">Entrar</button></div>';
 }
+var TOQUES = 0;
+function tocarSello() { TOQUES++; clearTimeout(tocarSello.t); tocarSello.t = setTimeout(function () { TOQUES = 0; }, 1500); if (TOQUES >= 5) { TOQUES = 0; informes(); } }
 function elegirTec(i, el) {
   $('nt').value = TECNICOS[i]; $('nt').parentNode.classList.remove('con-error'); $('e-nt').textContent = '';
   [].forEach.call(el.parentNode.children, function (b) { b.classList.toggle('sel', b === el); });
 }
 function guardarTecnico() {
   var t = $('nt').value.trim();
-  if (!t) { $('e-nt').textContent = 'Escribe tu nombre'; $('nt').parentNode.classList.add('con-error'); $('nt').focus(); return; }
+  if (!t) { $('e-nt').textContent = 'Elige tu nombre'; $('nt').parentNode.classList.add('con-error'); return; }
   if (/^\d{4,8}$/.test(t)) {
     run('appInformeVivo', t).then(function () { ls('admin', true); try { localStorage.setItem('cic_pin', t); } catch (e) {} informes(); })
     .catch(function () { $('e-nt').textContent = 'Escribe tu nombre'; $('nt').parentNode.classList.add('con-error'); });
