@@ -439,8 +439,9 @@ function pedirTecnico() {
     '<div class="campo"><label for="nt">Nombre del técnico</label>' +
     '<div class="chips" style="margin-bottom:10px">' + TECNICOS.map(function (n, i) { return '<button type="button" class="' + (ls('tecnico') === n ? 'sel' : '') + '" onclick="elegirTec(' + i + ',this)">' + esc(n) + '</button>'; }).join('') + '</div>' +
     '<input id="nt" type="hidden" value="' + esc(TECNICOS.indexOf(ls('tecnico')) >= 0 ? ls('tecnico') : '') + '"><p class="error" id="e-nt"></p></div>' +
-    '<div class="campo"><label for="ng">Celular: marca y número de serie</label><input id="ng" class="mayus" value="' + esc(ls('gps_serie') || '') + '" autocomplete="off"><p class="error" id="e-ng"></p></div>' +
-    '<div class="campo"><label for="ne">Serie del equipo detector</label><input id="ne" class="mayus" value="' + esc(ls('equipo_serie') || '') + '" autocomplete="off"><p class="error" id="e-ne"></p></div>' +
+    '<div class="fila2"><div class="campo"><label for="ng">Celular: marca</label><input id="ng" class="mayus" value="' + esc(ls('gps_marca') || '') + '" autocomplete="off"><p class="error" id="e-ng"></p></div>' +
+    '<div class="campo"><label for="ns">Celular: n.º de serie</label><input id="ns" class="mayus" value="' + esc(ls('gps_num') || '') + '" autocomplete="off"><p class="error" id="e-ns"></p></div></div>' +
+    '<div class="campo"><label for="ne">Equipo <span class="opc">(serie del detector de gas)</span></label><input id="ne" class="mayus" value="' + esc(ls('equipo_serie') || '') + '" autocomplete="off"><p class="error" id="e-ne"></p></div>' +
     '<button type="button" class="btn prim total" onclick="guardarTecnico()">Entrar</button></div>';
 }
 var TOQUES = 0;
@@ -457,9 +458,10 @@ function guardarTecnico() {
     .catch(function () { $('e-nt').textContent = 'Escribe tu nombre'; $('nt').parentNode.classList.add('con-error'); });
     return;
   }
-  if (!$('ng').value.trim()) { $('e-ng').textContent = 'Escribe la marca y serie del celular'; $('ng').parentNode.classList.add('con-error'); $('ng').focus(); return; }
-  if (!$('ne').value.trim()) { $('e-ne').textContent = 'Escribe la serie del equipo'; $('ne').parentNode.classList.add('con-error'); $('ne').focus(); return; }
-  ls('tecnico', t.toUpperCase()); ls('equipo_serie', $('ne').value.trim().toUpperCase()); ls('gps_serie', $('ng').value.trim().toUpperCase()); pintarTec(); inicio();
+  if (!$('ng').value.trim()) { $('e-ng').textContent = 'Escribe la marca'; $('ng').parentNode.classList.add('con-error'); $('ng').focus(); return; }
+  if (!$('ns').value.trim()) { $('e-ns').textContent = 'Escribe el n.º de serie'; $('ns').parentNode.classList.add('con-error'); $('ns').focus(); return; }
+  if (!$('ne').value.trim()) { $('e-ne').textContent = 'Escribe el equipo'; $('ne').parentNode.classList.add('con-error'); $('ne').focus(); return; }
+  ls('tecnico', t.toUpperCase()); ls('equipo_serie', $('ne').value.trim().toUpperCase()); ls('gps_marca', $('ng').value.trim().toUpperCase()); ls('gps_num', $('ns').value.trim().toUpperCase()); ls('gps_serie', ls('gps_marca') + ' ' + ls('gps_num')); pintarTec(); inicio();
 }
 
 function inicio() {
