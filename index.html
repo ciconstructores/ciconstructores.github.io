@@ -563,9 +563,9 @@ function campoHtml(c) {
     return '<div class="campo" data-k="' + k + '"><span class="etq">' + esc(et.replace(' (SI / NO)', '')) + '</span><div class="chips' + (ops.length === 3 ? ' tres' : '') + (ops.length > 3 ? (ops.some(function (o) { return o.length > 8; }) ? ' largas' : ' muchas') : '') + '" role="group" aria-label="' + esc(et) + '">' +
       ops.map(function (o, i) { return '<button type="button" class="' + (v === o ? 'sel' : '') + '" aria-pressed="' + (v === o) + '" onclick="elegir(\'' + k + '\',' + i + ',this)">' + esc(o) + '</button>'; }).join('') + '</div><p class="error"></p></div>';
   }
-  var req = '';
+  var req = k === 'lon' ? ' <span class="opc">(el signo menos se pone solo)</span>' : '';
   if (c[2] === 'parrafo') return '<div class="campo"><label for="f_' + k + '">' + esc(et) + '</label><textarea id="f_' + k + '" data-k="' + k + '" placeholder="Escribe aquí…">' + esc(v) + '</textarea><p class="error"></p></div>';
-  return '<div class="campo"><label for="f_' + k + '">' + esc(et) + req + '</label><input id="f_' + k + '" data-k="' + k + '" type="' + (k === 'locfecha' ? 'date' : 'text') + '"' + (NUM.indexOf(k) >= 0 ? ' inputmode="decimal"' : '') + ' value="' + esc(v) + '" autocomplete="off"><p class="error"></p></div>';
+  return '<div class="campo"><label for="f_' + k + '">' + esc(et) + req + '</label><input id="f_' + k + '" data-k="' + k + '" type="' + (k === 'locfecha' ? 'date' : 'text') + '"' + (NUM.indexOf(k) >= 0 ? ' inputmode="decimal"' : '') + (k === 'lon' ? ' onblur="negLon(this)"' : '') + ' value="' + esc(v) + '" name="c' + Math.random().toString(36).slice(2) + '" autocomplete="off" autocorrect="off" spellcheck="false"><p class="error"></p></div>';
 }
 function pintar() {
   var ps = pasos(), p = ps[E.paso], h = '';
@@ -618,8 +618,10 @@ function elegir(k, v, el) {
   [].forEach.call(el.parentNode.children, function (b) { b.classList.toggle('sel', b === el); b.setAttribute('aria-pressed', b === el); });
   el.closest('.campo').classList.remove('con-error');
 }
+function negLon(el) { var v = el.value.trim(); if (/^\d/.test(v)) el.value = '-' + v; }
 function leerCampos() {
   [].forEach.call(document.querySelectorAll('#app [data-k]'), function (el) { if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') E.v[el.dataset.k] = el.value.trim(); });
+  if (E.v.lon && /^\d/.test(E.v.lon)) E.v.lon = '-' + E.v.lon;
   if ($('f_fecha')) E.fecha = $('f_fecha').value || hoyISO();
 }
 function marcarError(k, msg) {
@@ -636,7 +638,7 @@ function validar(p) {
   cs.forEach(function (c) { var v = E.v[c[0]]; if (v == null || String(v).trim() === '') { malos.push(c[0]); msg[c[0]] = 'Campo obligatorio'; } });
   if (p === 2) {
     if (E.v.lat && !coordOk(E.v.lat, -5, 14)) { malos.push('lat'); msg.lat = 'Revisa la latitud (en Colombia va entre -5 y 14)'; }
-    if (E.v.lon && !coordOk(E.v.lon, -82, -66)) { malos.push('lon'); msg.lon = 'La longitud es negativa, cerca de -73.08'; }
+    if (E.v.lon && !coordOk(E.v.lon, -82, -66)) { malos.push('lon'); msg.lon = 'Revisa la longitud (en Colombia va entre -66 y -82)'; }
   }
   if (malos.length) {
     if (malos[0] !== 'fecha' && !document.querySelector('#app [data-k="' + malos[0] + '"]')) { E.paso = p; pintar(); }
@@ -723,6 +725,7 @@ window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault()
 window.addEventListener('appinstalled', function () { $('instalar').hidden = true; toast('App instalada en el inicio'); });
 function instalarApp() { if (!PROMPT) return; PROMPT.prompt(); PROMPT.userChoice.then(function () { PROMPT = null; $('instalar').hidden = true; }); }
 if ('serviceWorker' in navigator && /github\.io$/.test(location.hostname)) { navigator.serviceWorker.register('sw.js').catch(function () {}); }
+try { Object.keys(localStorage).forEach(function (k) { if (/^cic_mem_/.test(k)) localStorage.removeItem(k); }); } catch (e) {}
 cargar();
 </script>
 </body>
