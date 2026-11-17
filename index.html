@@ -329,6 +329,8 @@ main { max-width: 640px; margin: 0 auto; padding: 18px 14px 140px; }
 .gps-btn { width: 100%; margin-top: 14px; }
 .ubic { cursor: pointer; }
 .chips.tres button { flex: 1 1 calc(33% - 8px); }
+.chips.muchas button { flex: 1 1 calc(33% - 8px); }
+.chips.largas button { flex: 1 1 calc(50% - 8px); }
 </style>
 </head>
 <body>
@@ -434,7 +436,8 @@ function pedirTecnico() {
   modoInicio('Reporte de <span>campo</span>', 'Escribe tu nombre una sola vez; queda guardado en este celular.');
   $('app').innerHTML = '<div class="tarjeta" style="margin-top:-30px"><h2>Responsable</h2>' +
     '<div class="campo"><label for="nt">Nombre del técnico</label><input id="nt" class="mayus" value="' + esc(ls('tecnico') || '') + '" placeholder="Nombre y apellido" autocomplete="off"><p class="error" id="e-nt"></p></div>' +
-    '<div class="campo"><label for="ng">Serie del GPS</label><input id="ng" class="mayus" value="' + esc(ls('gps_serie') || '') + '" autocomplete="off"><p class="error" id="e-ng"></p></div>' +
+    '<div class="campo"><label for="ng">Celular: marca y número de serie</label><input id="ng" class="mayus" value="' + esc(ls('gps_serie') || '') + '" autocomplete="off"><p class="error" id="e-ng"></p></div>' +
+    '<div class="campo"><label for="ne">Serie del equipo detector</label><input id="ne" class="mayus" value="' + esc(ls('equipo_serie') || '') + '" autocomplete="off"><p class="error" id="e-ne"></p></div>' +
     '<button type="button" class="btn prim total" onclick="guardarTecnico()">Entrar</button></div>';
 }
 function guardarTecnico() {
@@ -445,8 +448,9 @@ function guardarTecnico() {
     .catch(function () { $('e-nt').textContent = 'Escribe tu nombre'; $('nt').parentNode.classList.add('con-error'); });
     return;
   }
-  if (!$('ng').value.trim()) { $('e-ng').textContent = 'Escribe la serie del GPS'; $('ng').parentNode.classList.add('con-error'); $('ng').focus(); return; }
-  ls('tecnico', t.toUpperCase()); ls('gps_serie', $('ng').value.trim().toUpperCase()); pintarTec(); inicio();
+  if (!$('ng').value.trim()) { $('e-ng').textContent = 'Escribe la marca y serie del celular'; $('ng').parentNode.classList.add('con-error'); $('ng').focus(); return; }
+  if (!$('ne').value.trim()) { $('e-ne').textContent = 'Escribe la serie del equipo'; $('ne').parentNode.classList.add('con-error'); $('ne').focus(); return; }
+  ls('tecnico', t.toUpperCase()); ls('equipo_serie', $('ne').value.trim().toUpperCase()); ls('gps_serie', $('ng').value.trim().toUpperCase()); pintarTec(); inicio();
 }
 
 function inicio() {
@@ -525,7 +529,9 @@ function abrir(k) {
   E = { tipo: k, paso: 0, v: {}, foto: null, fecha: hoyISO() };
   var mem = {};
   Object.keys(POR_DEFECTO).forEach(function (p) { if (mem[p] == null) mem[p] = POR_DEFECTO[p]; });
-  if (mem.gps == null && ls('gps_serie')) mem.gps = ls('gps_serie');
+  mem.gps = ls('gps_serie') || ''; mem.equipo = ls('equipo_serie') || ''; mem.depto = 'SANTANDER';
+  var falta = tipoActual().campos.some(function (c) { return c[2] === 'auto' && !mem[c[0]]; });
+  if (falta) { pedirTecnico(); toast('Completa tus datos para seguir'); return; }
   tipoActual().campos.forEach(function (c) { if (mem[c[0]] != null) E.v[c[0]] = mem[c[0]]; });
   var t = tipoActual();
   $('titulo').innerHTML = esc(t.opcion).replace(/(\S+)$/, '<span>$1</span>');
@@ -540,10 +546,11 @@ function pintarPasos() {
 }
 function campoHtml(c) {
   var k = c[0], et = c[1], v = E.v[k] != null ? E.v[k] : '';
+  if (c[2] === 'auto') return '';
   if (k === 'pintada' || k === 'marcada' || c[2] === 'opciones') {
-    var ops = c[2] === 'opciones' ? c[3] : ['SI', 'NO'];
-    return '<div class="campo" data-k="' + k + '"><span class="etq">' + esc(et.replace(' (SI / NO)', '')) + '</span><div class="chips' + (ops.length === 3 ? ' tres' : '') + '" role="group" aria-label="' + esc(et) + '">' +
-      ops.map(function (o) { return '<button type="button" class="' + (v === o ? 'sel' : '') + '" aria-pressed="' + (v === o) + '" onclick="elegir(\'' + k + '\',\'' + o + '\',this)">' + esc(o) + '</button>'; }).join('') + '</div><p class="error"></p></div>';
+    var ops = c[2] === 'opciones' ? c[3] : ['SI', 'NO']; OPS[k] = ops;
+    return '<div class="campo" data-k="' + k + '"><span class="etq">' + esc(et.replace(' (SI / NO)', '')) + '</span><div class="chips' + (ops.length === 3 ? ' tres' : '') + (ops.length > 3 ? (ops.some(function (o) { return o.length > 8; }) ? ' largas' : ' muchas') : '') + '" role="group" aria-label="' + esc(et) + '">' +
+      ops.map(function (o, i) { return '<button type="button" class="' + (v === o ? 'sel' : '') + '" aria-pressed="' + (v === o) + '" onclick="elegir(\'' + k + '\',' + i + ',this)">' + esc(o) + '</button>'; }).join('') + '</div><p class="error"></p></div>';
   }
   var req = '';
   if (c[2] === 'parrafo') return '<div class="campo"><label for="f_' + k + '">' + esc(et) + '</label><textarea id="f_' + k + '" data-k="' + k + '" placeholder="Escribe aquí…">' + esc(v) + '</textarea><p class="error"></p></div>';
@@ -592,8 +599,11 @@ function resumenHtml() {
   t.campos.forEach(function (c) { if (E.v[c[0]]) filas.push([c[1].replace(' (SI / NO)', ''), E.v[c[0]]]); });
   return filas.map(function (f) { return '<div><span>' + esc(f[0]) + '</span><b>' + esc(f[1]) + '</b></div>'; }).join('');
 }
+var OPS = {};
 function elegir(k, v, el) {
+  if (typeof v === 'number') v = OPS[k][v];
   E.v[k] = v;
+  if (k === 'municipio') E.v.depto = v === 'OCAÑA' ? 'NORTE DE SANTANDER' : 'SANTANDER';
   [].forEach.call(el.parentNode.children, function (b) { b.classList.toggle('sel', b === el); b.setAttribute('aria-pressed', b === el); });
   el.closest('.campo').classList.remove('con-error');
 }
