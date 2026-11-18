@@ -394,7 +394,7 @@ var DESC = { ANOM: 'Daños o riesgos en la red', POLI: 'Inspección de polivalvu
 var GRUPO_UBIC = ['depto', 'municipio', 'sector', 'zona', 'malla', 'mz', 'manz', 'ciclo', 'dm', 'idvalvula', 'direccion'];
 var GRUPO_GPS = ['lat', 'lon', 'gps', 'wp'];
 var RECORDAR = [];
-var TECNICOS = ['DAVID BARÓN ISAQUITA', 'LUIS BERTEL MERCADO'];
+var TECNICOS = ['DAVID BARÓN ISAQUITA'];
 var CEL_TEC = { 'DAVID BARÓN ISAQUITA': ['ULEFONE ARMOR X13', '3125904975'], 'LUIS BERTEL MERCADO': ['ULEFONE ARMOR X13', '3125904954'] };
 var POR_DEFECTO = {};
 var NUM = ['lat', 'lon', 'wp', 'pv', 'lectura', 'loclectura', 'diametro'];
@@ -440,8 +440,8 @@ function pedirTecnico() {
     '<div class="campo"><label for="nt">Nombre del técnico</label>' +
     '<div class="chips" style="margin-bottom:10px">' + TECNICOS.map(function (n, i) { return '<button type="button" class="' + (ls('tecnico') === n ? 'sel' : '') + '" onclick="elegirTec(' + i + ',this)">' + esc(n) + '</button>'; }).join('') + '</div>' +
     '<input id="nt" type="hidden" value="' + esc(TECNICOS.indexOf(ls('tecnico')) >= 0 ? ls('tecnico') : '') + '"><p class="error" id="e-nt"></p></div>' +
-    '<div class="fila2"><div class="campo"><label for="ng">Celular: marca</label><input id="ng" class="mayus" value="' + esc(ls('gps_marca') || '') + '" autocomplete="off"><p class="error" id="e-ng"></p></div>' +
-    '<div class="campo"><label for="ns">Celular: número</label><input id="ns" class="mayus" value="' + esc(ls('gps_num') || '') + '" autocomplete="off"><p class="error" id="e-ns"></p></div></div>' +
+    '<div class="fila2"><div class="campo"><label for="ng">Marca</label><input id="ng" class="mayus" value="' + esc(ls('gps_marca') || '') + '" autocomplete="off"><p class="error" id="e-ng"></p></div>' +
+    '<div class="campo"><label for="ns">Número</label><input id="ns" class="mayus" value="' + esc(ls('gps_num') || '') + '" autocomplete="off"><p class="error" id="e-ns"></p></div></div>' +
     '<div class="campo"><label for="ne">Equipo <span class="opc">(serie del detector de gas)</span></label><input id="ne" class="mayus" value="' + esc(ls('equipo_serie') || '') + '" autocomplete="off"><p class="error" id="e-ne"></p></div>' +
     '<button type="button" class="btn prim total" onclick="guardarTecnico()">Entrar</button></div>';
 }
