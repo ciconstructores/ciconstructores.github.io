@@ -218,6 +218,16 @@ main { max-width: 640px; margin: 0 auto; padding: 18px 14px 140px; }
 }
 .foto-titulo { display: block; margin-top: 9px; font-size: 13px; font-weight: 700; line-height: 1.25; font-family: 'Outfit', sans-serif; }
 .foto-ayuda { display: block; margin-top: 3px; font-size: 11.5px; color: var(--suave); line-height: 1.4; }
+.fotos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.fotos .tile { aspect-ratio: 3 / 4; }
+.fotos .tile.lleno { border: 2px solid transparent; box-shadow: 0 12px 24px -14px rgba(15, 42, 32, .5); }
+.fotos .tile.lleno img { display: block; animation: revelar .45s ease both; }
+.fotos .tile.lleno .quitar { display: grid; place-items: center; }
+.fotos .opciones { padding: 6px; gap: 6px; }
+.fotos .op { font-size: 12px; min-height: 40px; gap: 5px; }
+.fotos .op svg { width: 16px; height: 16px; }
+.fotos .tile.cargando::after { content: ''; position: absolute; z-index: 4; width: 36px; height: 36px; left: calc(50% - 18px); top: calc(50% - 18px); border-radius: 50%; border: 3px solid rgba(15, 138, 95, .18); border-top-color: var(--azul); animation: giro .8s linear infinite; }
+.campo.con-error .fotos .tile:not(.lleno) { border-color: var(--error); background: #fff4f6; }
 
 /* Cierre */
 .ubic { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 13px; border-radius: 18px; background: var(--crema); }
@@ -383,7 +393,7 @@ main { max-width: 640px; margin: 0 auto; padding: 18px 14px 140px; }
 
 <script>
 var CFG = null;
-var E = { tipo: null, paso: 0, v: {}, foto: null, fecha: '' };
+var E = { tipo: null, paso: 0, v: {}, foto: null, fotos: [], fecha: '' };
 var ICONOS = {
   ANOM: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
   POLI: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5 19 19M5 19l2.5-2.5M16.5 7.5 19 5"/></svg>',
@@ -484,7 +494,7 @@ function guardarTecnico() {
 }
 
 function inicio() {
-  E = { tipo: null, paso: 0, v: {}, foto: null, fecha: hoyISO() };
+  E = { tipo: null, paso: 0, v: {}, foto: null, fotos: [], fecha: hoyISO() };
   modoInicio('¿Qué <span>encontraste</span>?', 'Toca el tipo de hallazgo para empezar el reporte.');
   var h = '<div id="cola-box"></div><div class="tipos" style="margin-top:-30px">';
   CFG.tipos.forEach(function (t) { h += '<button type="button" class="tipo" onclick="abrir(\'' + t.k + '\')"><span class="ico">' + ICONOS[t.k] + '</span><b>' + esc(t.opcion) + '</b><small>' + DESC[t.k] + '</small></button>'; });
@@ -556,7 +566,7 @@ function pasos() {
   return [{ n: 'Ubicación', c: ub }, { n: 'Hallazgo', c: otros }, { n: 'GPS', c: gps }, { n: 'Enviar', c: [] }];
 }
 function abrir(k) {
-  E = { tipo: k, paso: 0, v: {}, foto: null, fecha: hoyISO() };
+  E = { tipo: k, paso: 0, v: {}, foto: null, fotos: [], fecha: hoyISO() };
   var mem = {};
   Object.keys(POR_DEFECTO).forEach(function (p) { if (mem[p] == null) mem[p] = POR_DEFECTO[p]; });
   mem.gps = ls('gps_serie') || ''; mem.equipo = ls('equipo_serie') || ''; mem.depto = 'SANTANDER';
@@ -610,26 +620,31 @@ function pintar() {
       var ll = cs.filter(function (c) { return c[0] === 'lat' || c[0] === 'lon'; }), resto = cs.filter(function (c) { return c[0] !== 'lat' && c[0] !== 'lon'; });
       h += '<div class="tarjeta"><h2>Coordenadas</h2><p class="sub">Copia las del equipo GPS o usa las del celular.</p><div id="ubic-box"></div>' + ll.map(campoHtml).join('') + resto.map(campoHtml).join('') + '</div>';
     } else {
-      h += '<div class="tarjeta"><h2>' + p.n + '</h2>' + '' + cs.map(campoHtml).join('') + '</div>';
+      h += '<div class="tarjeta"><h2>' + p.n + '</h2>' + '' + cs.map(campoHtml).join('') + '</div>' + (E.paso === 1 ? fotosHtml() : '');
     }
   } else {
     h += '<div class="tarjeta"><h2>Revisa y envía</h2><div class="resumen">' + resumenHtml() + '</div></div>';
   }
   $('app').innerHTML = '<section class="seccion visible">' + h + '</section>';
+  pintarFotos();
   if ($('ubic-box')) pintarUbic();
   $('nav').hidden = false;
   $('atras').textContent = E.paso === 0 ? 'Cancelar' : 'Atrás';
   $('siguiente').textContent = E.paso === ps.length - 1 ? 'Enviar reporte' : 'Siguiente';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-function fotoHtml() {
+function fotosHtml() {
+  return '<div class="tarjeta"><h2>Fotos <span class="cnt" id="fotos-cnt">' + E.fotos.length + '/3</span></h2><p class="sub">Agrega de 1 a 3 fotos del hallazgo.</p>' +
+    '<div class="campo" data-k="fotos"><div class="fotos" id="fotos-box"></div><p class="error"></p></div></div>';
+}
+function pintarFotos() {
+  var b = $('fotos-box'); if (!b) return;
   var cam = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
   var gal = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/></svg>';
-  return '<div class="campo foto' + (E.foto ? ' lista' : '') + '" id="campo-foto"><div class="tile" style="aspect-ratio:16/10">' +
-    '<div class="opciones" style="flex-direction:row;max-width:400px"><label class="op cam">' + cam + 'Cámara<input type="file" accept="image/*" capture="environment" onchange="leerFoto(this)"></label>' +
-    '<label class="op gal">' + gal + 'Galería<input type="file" accept="image/*" onchange="leerFoto(this)"></label></div>' +
-    '<img id="foto-img" alt="Foto del hallazgo"' + (E.foto ? ' src="' + E.foto + '"' : '') + '><button type="button" class="quitar" onclick="quitarFoto()" aria-label="Quitar foto">✕</button>' +
-    '<span class="listo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="m5 12 5 5 9-10"/></svg></span></div></div>';
+  var h = E.fotos.map(function (f, i) { return '<div class="tile lleno"><img src="' + f + '" alt="Foto ' + (i + 1) + '"><button type="button" class="quitar" onclick="quitarFoto(' + i + ')" aria-label="Quitar foto">✕</button></div>'; }).join('');
+  if (E.fotos.length < 3) h += '<div class="tile"><div class="opciones"><label class="op cam">' + cam + 'Cámara<input type="file" accept="image/*" capture="environment" onchange="leerFoto(this)"></label>' +
+    '<label class="op gal">' + gal + 'Galería<input type="file" accept="image/*" multiple onchange="leerFoto(this)"></label></div></div>';
+  b.innerHTML = h; if ($('fotos-cnt')) $('fotos-cnt').textContent = E.fotos.length + '/3';
 }
 function pintarUbic() {
   var b = $('ubic-box'); if (!b) return;
@@ -641,6 +656,7 @@ function usarGps() { gpsNuevo(true); }
 function resumenHtml() {
   var t = tipoActual(), filas = [['Tipo', t.opcion], ['Técnico', ls('tecnico')], ['Fecha', E.fecha.split('-').reverse().join('/')]];
   t.campos.forEach(function (c) { if (E.v[c[0]]) filas.push([c[1].replace(' (SI / NO)', ''), E.v[c[0]]]); });
+  filas.push(['Fotos', E.fotos.length + ' de 3']);
   return filas.map(function (f) { return '<div><span>' + esc(f[0]) + '</span><b>' + esc(f[1]) + '</b></div>'; }).join('');
 }
 var OPS = {};
@@ -673,6 +689,7 @@ function validar(p) {
     if (E.v.lat && !coordOk(E.v.lat, -5, 14)) { malos.push('lat'); msg.lat = 'Revisa la latitud (en Colombia va entre -5 y 14)'; }
     if (E.v.lon && !coordOk(E.v.lon, -82, -66)) { malos.push('lon'); msg.lon = 'Revisa la longitud (en Colombia va entre -66 y -82)'; }
   }
+  if (p === 1 && !E.fotos.length) { malos.push('fotos'); msg.fotos = 'Agrega al menos 1 foto'; }
   if (malos.length) {
     if (malos[0] !== 'fecha' && !document.querySelector('#app [data-k="' + malos[0] + '"]')) { E.paso = p; pintar(); }
     malos.forEach(function (k) { marcarError(k, msg[k]); });
@@ -696,22 +713,31 @@ function mover(d) {
 }
 
 /* ---------- Foto ---------- */
-function leerFoto(inp) {
-  var f = inp.files && inp.files[0]; if (!f) return;
-  var c = $('campo-foto'); c.classList.add('cargando');
-  var r = new FileReader();
-  r.onload = function () {
-    var img = new Image();
-    img.onload = function () {
-      var max = 1280, s = Math.min(1, max / Math.max(img.width, img.height)), cv = document.createElement('canvas');
-      cv.width = Math.round(img.width * s); cv.height = Math.round(img.height * s); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-      E.foto = cv.toDataURL('image/jpeg', .72); $('foto-img').src = E.foto; c.classList.remove('cargando'); c.classList.add('lista');
-    };
-    img.src = r.result;
+function comprimirFoto(f, cb) {
+  var img = new Image(), url = URL.createObjectURL(f);
+  img.onload = function () {
+    var max = 1280, s = Math.min(1, max / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+    cv.width = Math.round(img.width * s); cv.height = Math.round(img.height * s); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(url); cb(cv.toDataURL('image/jpeg', .72));
   };
-  r.readAsDataURL(f);
+  img.onerror = function () { URL.revokeObjectURL(url); toast('No se pudo leer la foto'); cb(null); };
+  img.src = url;
 }
-function quitarFoto() { E.foto = null; var c = $('campo-foto'); c.classList.remove('lista'); $('foto-img').removeAttribute('src'); }
+function leerFoto(inp) {
+  var todas = [].slice.call(inp.files || []), files = todas.slice(0, 3 - E.fotos.length); if (!files.length) return;
+  if (todas.length > files.length) toast('Máximo 3 fotos por reporte');
+  var yo = E, pend = files.length, add = document.querySelector('#fotos-box .tile:not(.lleno)'); if (add) add.classList.add('cargando');
+  files.forEach(function (f) {
+    comprimirFoto(f, function (d) {
+      if (E === yo && d && E.fotos.length < 3) E.fotos.push(d);
+      if (--pend === 0 && E === yo) {
+        pintarFotos();
+        var c = document.querySelector('#app .campo[data-k="fotos"]'); if (c && E.fotos.length) { c.classList.remove('con-error'); c.querySelector('.error').textContent = ''; }
+      }
+    });
+  });
+}
+function quitarFoto(i) { E.fotos.splice(i, 1); pintarFotos(); }
 
 /* ---------- Envío ---------- */
 function enviar() {
@@ -719,11 +745,11 @@ function enviar() {
   RECORDAR.forEach(function (r) { if (E.v[r]) mem[r] = E.v[r]; }); ls('mem_' + E.tipo, mem);
   var v = {}; t.campos.forEach(function (c) { v[c[0]] = E.v[c[0]] || ''; });
   ULTIMO = { tipo: E.tipo, v: JSON.parse(JSON.stringify(v)), fecha: E.fecha };
-  var d = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), tipo: E.tipo, tecnico: ls('tecnico'), fecha: E.fecha, v: v, foto: E.foto };
+  var d = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), tipo: E.tipo, tecnico: ls('tecnico'), fecha: E.fecha, v: v, foto: null, fotos: E.fotos.slice() };
   $('capa').hidden = false; $('capa-texto').textContent = ''; $('capa-barra').style.width = '15%';
   var paso = setInterval(function () { var b = $('capa-barra'); var w = parseFloat(b.style.width) || 0; if (w < 90) b.style.width = (w + 8) + '%'; }, 400);
   run('appGuardar', d).then(function () { fin(false); }).catch(function () {
-    var cola = ls('cola') || []; cola.push(d); if (!ls('cola', cola) && d.foto) { d.foto = null; cola[cola.length - 1] = d; ls('cola', cola); }
+    var cola = ls('cola') || []; cola.push(d); if (!ls('cola', cola) && d.fotos.length) { d.fotos = []; cola[cola.length - 1] = d; ls('cola', cola); toast('Celular sin espacio: el reporte quedó guardado sin fotos'); }
     fin(true);
   });
   function fin(pend) {
