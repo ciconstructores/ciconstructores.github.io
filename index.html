@@ -422,7 +422,24 @@ function pedirGps(avisar) {
     if (avisar) toast('Ubicación del celular lista');
     if ($('ubic-box')) pintarUbic();
   }, function () { POS = null; pintarGps('gps-mal', 'GPS sin permiso'); if (avisar) toast('No se pudo tomar la ubicación'); if ($('ubic-box')) pintarUbic(); },
-  { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
+  { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+}
+function gpsNuevo(forzar) {
+  if (!navigator.geolocation) { toast('GPS no disponible'); return; }
+  var yo = E; pintarGps('gps-busca', 'Buscando GPS…'); if (forzar) toast('Tomando la ubicación de este punto…');
+  navigator.geolocation.getCurrentPosition(function (p) {
+    POS = p.coords; pintarGps('gps-ok', 'GPS ±' + Math.round(p.coords.accuracy) + ' m');
+    if (E === yo && E.tipo) {
+      if (!$('pasos').hidden) leerCampos();
+      if (forzar || (!E.v.lat && !E.v.lon)) {
+        E.v.lat = p.coords.latitude.toFixed(6); E.v.lon = p.coords.longitude.toFixed(6);
+        if ($('f_lat')) $('f_lat').value = E.v.lat; if ($('f_lon')) $('f_lon').value = E.v.lon;
+        toast('Coordenadas de este punto listas (±' + Math.round(p.coords.accuracy) + ' m)');
+      }
+    }
+    if ($('ubic-box')) pintarUbic();
+  }, function () { pintarGps('gps-mal', 'GPS sin permiso'); toast('No se pudo tomar la ubicación'); if ($('ubic-box')) pintarUbic(); },
+  { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
 }
 
 /* ---------- Inicio ---------- */
@@ -544,12 +561,26 @@ function abrir(k) {
   Object.keys(POR_DEFECTO).forEach(function (p) { if (mem[p] == null) mem[p] = POR_DEFECTO[p]; });
   mem.gps = ls('gps_serie') || ''; mem.equipo = ls('equipo_serie') || ''; mem.depto = 'SANTANDER';
   var falta = tipoActual().campos.some(function (c) { return c[2] === 'auto' && !mem[c[0]]; });
-  if (falta) { pedirTecnico(); toast('Completa tus datos para seguir'); return; }
+  if (falta) { pedirTecnico(); toast('Completa tus datos para seguir'); return false; }
   tipoActual().campos.forEach(function (c) { if (mem[c[0]] != null) E.v[c[0]] = mem[c[0]]; });
   var t = tipoActual();
   $('titulo').innerHTML = esc(t.opcion).replace(/(\S+)$/, '<span>$1</span>');
   $('subtitulo').textContent = DESC[k];
   pintar();
+  return true;
+}
+var ULTIMO = null;
+var LIMPIAR = { POLI: ['idvalvula', 'direccion', 'obs'], ANOM: ['direccion', 'descripcion'], FCM: ['direccion', 'localizacion', 'tipo', 'medidor', 'pv', 'nivel', 'clase'], FRED: ['direccion', 'localizacion', 'lectura', 'locfecha', 'loclectura', 'obs'] };
+function otroCerca() {
+  var u = ULTIMO; if (!u) { inicio(); return; }
+  if (!abrir(u.tipo)) return;
+  var fuera = (LIMPIAR[u.tipo] || []).concat(['lat', 'lon', 'wp', 'gps', 'equipo']);
+  Object.keys(u.v).forEach(function (k) { if (fuera.indexOf(k) < 0 && u.v[k] !== '') E.v[k] = u.v[k]; });
+  var n = parseInt(u.v.wp, 10); if (!isNaN(n)) E.v.wp = String(n + 1);
+  E.fecha = u.fecha;
+  pintar();
+  gpsNuevo(false);
+  toast('Datos copiados. Escribe lo nuevo; el GPS se toma solo');
 }
 function pintarPasos() {
   var ps = pasos(), nav = $('pasos');
@@ -606,7 +637,7 @@ function pintarUbic() {
   b.innerHTML = POS ? '<div class="ubic" onclick="usarGps()"><span class="pin">' + pin + '</span><div><b>Usar ubicación del celular</b><small>' + POS.latitude.toFixed(6) + ', ' + POS.longitude.toFixed(6) + ' · ±' + Math.round(POS.accuracy) + ' m</small></div></div>'
     : '<div class="ubic sin" onclick="pedirGps(true)"><span class="pin">' + pin + '</span><div><b>Sin ubicación del celular</b><small>Toca para intentarlo de nuevo</small></div></div>';
 }
-function usarGps() { if (!POS) return; leerCampos(); E.v.lat = POS.latitude.toFixed(6); E.v.lon = POS.longitude.toFixed(6); pintar(); toast('Coordenadas copiadas'); }
+function usarGps() { gpsNuevo(true); }
 function resumenHtml() {
   var t = tipoActual(), filas = [['Tipo', t.opcion], ['Técnico', ls('tecnico')], ['Fecha', E.fecha.split('-').reverse().join('/')]];
   t.campos.forEach(function (c) { if (E.v[c[0]]) filas.push([c[1].replace(' (SI / NO)', ''), E.v[c[0]]]); });
@@ -687,6 +718,7 @@ function enviar() {
   var t = tipoActual(), mem = {};
   RECORDAR.forEach(function (r) { if (E.v[r]) mem[r] = E.v[r]; }); ls('mem_' + E.tipo, mem);
   var v = {}; t.campos.forEach(function (c) { v[c[0]] = E.v[c[0]] || ''; });
+  ULTIMO = { tipo: E.tipo, v: JSON.parse(JSON.stringify(v)), fecha: E.fecha };
   var d = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), tipo: E.tipo, tecnico: ls('tecnico'), fecha: E.fecha, v: v, foto: E.foto };
   $('capa').hidden = false; $('capa-texto').textContent = ''; $('capa-barra').style.width = '15%';
   var paso = setInterval(function () { var b = $('capa-barra'); var w = parseFloat(b.style.width) || 0; if (w < 90) b.style.width = (w + 8) + '%'; }, 400);
@@ -706,7 +738,9 @@ function exito(op, pend) {
   $('app').innerHTML = '<div class="tarjeta exito" style="margin-top:-30px"><div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="m5 12 5 5 9-10"/></svg></div>' +
     '<h2>' + (pend ? 'Se enviará al volver la señal' : 'Ya quedó en el informe') + '</h2><p class="sub">' + esc(op) + '</p>' +
     (pend ? '<div class="aviso">No hay conexión. El reporte quedó guardado en este celular y se envía solo cuando vuelva la señal. No borres los datos del navegador.</div>' : '') +
-    '<button type="button" class="btn prim total" onclick="abrir(\'' + E.tipo + '\')">Otro reporte igual</button>' +
+    '<button type="button" class="btn prim total" onclick="otroCerca()">' + (E.tipo === 'POLI' ? 'Otra polivalvula cerca' : 'Otro reporte cerca') + '</button>' +
+    '<p class="sub" style="margin-top:8px">Copia los datos de este reporte; solo cambias lo nuevo y el GPS se toma de nuevo.</p>' +
+    '<button type="button" class="btn sec total" style="margin-top:10px" onclick="abrir(\'' + E.tipo + '\')">Nuevo reporte en blanco</button>' +
     '<button type="button" class="btn sec total" style="margin-top:10px" onclick="inicio()">Ir al inicio</button></div>';
   window.scrollTo(0, 0);
 }
