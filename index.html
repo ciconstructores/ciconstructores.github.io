@@ -405,7 +405,7 @@ var GRUPO_UBIC = ['depto', 'municipio', 'sector', 'zona', 'malla', 'mz', 'manz',
 var GRUPO_GPS = ['lat', 'lon', 'gps', 'wp'];
 var RECORDAR = [];
 var TECNICOS = ['DAVID BARÓN ISAQUITA'];
-var CEL_TEC = { 'DAVID BARÓN ISAQUITA': ['ULEFONE ARMOR X13', '3125904975'], 'LUIS BERTEL MERCADO': ['ULEFONE ARMOR X13', '3125904954'] };
+var CEL_TEC = { 'DAVID BARÓN ISAQUITA': ['ULEFONE ARMOR X13', '3125904975', 'EX-TEC HS680 064.01.002134 04.10'], 'LUIS BERTEL MERCADO': ['ULEFONE ARMOR X13', '3125904954'] };
 var POR_DEFECTO = {};
 var NUM = ['lat', 'lon', 'wp', 'pv', 'lectura', 'loclectura', 'diametro'];
 var POS = null;
@@ -476,7 +476,7 @@ var TOQUES = 0;
 function tocarSello() { TOQUES++; clearTimeout(tocarSello.t); tocarSello.t = setTimeout(function () { TOQUES = 0; }, 1500); if (TOQUES >= 5) { TOQUES = 0; informes(); } }
 function elegirTec(i, el) {
   $('nt').value = TECNICOS[i]; $('nt').parentNode.classList.remove('con-error'); $('e-nt').textContent = '';
-  var cel = CEL_TEC[TECNICOS[i]]; if (cel) { $('ng').value = cel[0]; $('ns').value = cel[1]; ['ng', 'ns'].forEach(function (id) { $(id).parentNode.classList.remove('con-error'); $('e-' + id).textContent = ''; }); }
+  var cel = CEL_TEC[TECNICOS[i]]; if (cel) { $('ng').value = cel[0]; $('ns').value = cel[1]; if (cel[2]) $('ne').value = cel[2]; ['ng', 'ns', 'ne'].forEach(function (id) { $(id).parentNode.classList.remove('con-error'); $('e-' + id).textContent = ''; }); }
   [].forEach.call(el.parentNode.children, function (b) { b.classList.toggle('sel', b === el); });
 }
 function guardarTecnico() {
